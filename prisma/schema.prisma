@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  renter
+  owner
+  both
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  rejected
+  completed
+}
+
+model User {
+  id        String   @id @default(uuid())
+  fullName  String
+  avatarUrl String?
+  bio       String?
+  city      String?
+  phone     String?
+  email     String   @unique
+  password  String
+  role      UserRole @default(both)
+  createdAt DateTime @default(now())
+
+  listings      Listing[]      @relation("OwnerListings")
+  bookings      Booking[]      @relation("RenterBookings")
+  reviews       Review[]       @relation("ReviewerReviews")
+  messages      Message[]      @relation("UserMessages")
+  notifications Notification[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  listings Listing[]
+}
+
+model Location {
+  id       Int       @id @default(autoincrement())
+  city     String
+  state    String?
+  country  String
+  listings Listing[]
+}
+
+model Listing {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  pricePerDay Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation("OwnerListings", fields: [ownerId], references: [id])
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id])
+
+  images       ListingImage[]
+  bookings     Booking[]
+  availability Availability[]
+}
+
+model ListingImage {
+  id        String  @id @default(uuid())
+  imageUrl  String
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+}
+
+model Availability {
+  id          String   @id @default(uuid())
+  date        DateTime
+  isAvailable Boolean  @default(true)
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+}
+
+model Booking {
+  id         String        @id @default(uuid())
+  startDate  DateTime
+  endDate    DateTime
+  totalPrice Float
+  status     BookingStatus @default(pending)
+  createdAt  DateTime      @default(now())
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+
+  renterId String
+  renter   User   @relation("RenterBookings", fields: [renterId], references: [id])
+
+  review   Review?
+  messages Message[]
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  reviewerId String
+  reviewer   User   @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+}
+
+model Message {
+  id      String   @id @default(uuid())
+  message String
+  sentAt  DateTime @default(now())
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  senderId String
+  sender   User   @relation("UserMessages", fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
